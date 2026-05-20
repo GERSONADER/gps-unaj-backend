@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GPS UNAJ - Alta Precisión</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f4f8; margin: 0; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        #map { height: 400px; width: 100%; border-radius: 10px; margin: 15px 0; border: 1px solid #ccc; }
+        .leyenda { display: flex; justify-content: space-around; margin-bottom: 10px; font-weight: bold; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🚀 Monitor GPS Tesis Toloza</h2>
+    <div id="status">Obteniendo señal...</div>
+    
+    <div class="leyenda">
+        <span><span class="dot" style="background:red"></span> Crudo</span>
+        <span><span class="dot" style="background:blue"></span> Filtrado</span>
+    </div>
+
+    <div id="map"></div>
+    
+    <p>Lat: <span id="lat">0</span> | Lon: <span id="lon">0</span></p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    const markerKalman = L.marker([0, 0]).addTo(map);
+    const markerRaw = L.circleMarker([0, 0], { color: 'red', radius: 6 }).addTo(map);
+
+    // AQUÍ REEMPLAZARÁS POR TU URL DE RENDER LUEGO
+    const API_URL = "http://127.0.0.1:5000/procesar"; 
+
+    navigator.geolocation.watchPosition(async (pos) => {
+        const payload = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+        };
+
+        markerRaw.setLatLng([payload.lat, payload.lon]);
+
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            const posF = [data.lat, data.lon];
+            markerKalman.setLatLng(posF);
+            map.setView(posF, 19);
+
+            document.getElementById('lat').innerText = data.lat.toFixed(7);
+            document.getElementById('lon').innerText = data.lon.toFixed(7);
+            document.getElementById('status').innerText = `Precisión: ±${payload.accuracy.toFixed(1)}m`;
+
+        } catch (e) {
+            document.getElementById('status').innerText = "⚠️ Error de conexión";
+        }
+    }, null, { enableHighAccuracy: true });
+</script>
+</body>
+</html>
