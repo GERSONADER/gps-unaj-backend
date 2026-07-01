@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNAJ - Sistema Inteligente de Corrección GPS</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+    .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    background:linear-gradient(90deg,#005BBB,#29B6F6);
+
+    padding:20px 35px;
+
+    border-radius:20px;
+
+    margin-bottom:20px;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.25);
+}
+
+.logo-container{
+
+    width:170px;
+
+    display:flex;
+
+    justify-content:center;
+
+}
+
+.logo-unaj{
+
+    width:150px;
+
+    background:white;
+
+    padding:12px;
+
+    border-radius:15px;
+
+    box-shadow:0 0 25px rgba(255,255,255,.6);
+
+}
+
+.logo-carrera{
+
+    width:120px;
+
+    background:white;
+
+    padding:10px;
+
+    border-radius:50%;
+
+    box-shadow:0 0 25px rgba(255,255,255,.6);
+
+}
+
+.titulo{
+
+    flex:1;
+
+    text-align:center;
+
+    color:white;
+
+}
+
+.titulo h1{
+
+    margin:0;
+
+    font-size:32px;
+
+}
+
+.titulo h3{
+
+    margin:8px 0;
+
+    font-size:22px;
+
+    color:#E3F2FD;
+
+}
+
+.titulo p{
+
+    margin:0;
+
+    font-size:18px;
+
+    letter-spacing:1px;
+
+}
+:root{
+--azul:#005BBB;--celeste:#41C9FF;--blanco:#fff;--fondo:#EAF6FF;--verde:#00C853;--rojo:#FF3D57;--texto:#183B56;
+}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial;background:linear-gradient(180deg,#dff4ff,#eef8ff);color:var(--texto)}
+header{background:linear-gradient(90deg,var(--azul),var(--celeste));padding:18px;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.top{max-width:1400px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{width:90px;height:90px;border:2px dashed rgba(255,255,255,.8);border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.15);font-weight:bold;text-align:center}
+.title{text-align:center;flex:1}
+.title h1{margin:0}.title h3{margin:6px 0 0;font-weight:400}
+.wrap{max-width:1400px;margin:20px auto;padding:0 18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 20px rgba(0,91,187,.12);border-top:6px solid var(--celeste)}
+.card h4{margin:0;color:#47789a}.value{margin-top:10px;font-size:1.4rem;font-weight:bold}
+#map{height:600px;border-radius:18px;margin:20px 0;overflow:hidden;border:4px solid #fff;box-shadow:0 10px 25px rgba(0,91,187,.25)}
+.legend{display:flex;gap:25px;flex-wrap:wrap}
+.item{display:flex;align-items:center;gap:8px;background:#fff;padding:10px 14px;border-radius:30px;box-shadow:0 5px 12px rgba(0,0,0,.08)}
+.dot{width:16px;height:16px;border-radius:50%}
+footer{background:#fff;border-radius:18px;padding:18px;box-shadow:0 8px 18px rgba(0,0,0,.08)}
+small{color:#5c7d98}
+</style>
+</head>
+<body>
+<header class="header">
+    <div class="logo-container">
+        <img src="/static/LOGO_UNAJ.png" class="logo-unaj">
+    </div>
+
+    <div class="titulo">
+        <h1>🛰️ Sistema Inteligente de Corrección de Posicionamiento GPS</h1>
+        <h3>Filtro de Kalman Adaptativo</h3>
+        <p>Universidad Nacional de Juliaca</p>
+    </div>
+
+    <div class="logo-container">
+        <img src="/static/LOGO_EPISS.png" class="logo-carrera">
+    </div>
+</header>
+
+<div class="wrap">
+<div class="cards">
+<div class="card"><h4>Latitud Corregida</h4><div class="value" id="lat">0.0000000</div></div>
+<div class="card"><h4>Longitud Corregida</h4><div class="value" id="lon">0.0000000</div></div>
+<div class="card"><h4>Precisión GPS</h4><div class="value" id="acc">±0 m</div></div>
+<div class="card"><h4>Estado del Filtro</h4><div class="value" id="estado">Esperando...</div></div>
+
+</div>
+
+<div id="map"></div>
+
+<div class="legend">
+<div class="item"><span class="dot" style="background:#FF3D57"></span><b>Rojo:</b> Posición original del GPS (sin filtrar).</div>
+<div class="item"><span class="dot" style="background:#00C853"></span><b>Verde:</b> Posición corregida mediante el Filtro de Kalman.</div>
+<div class="item"><span class="dot" style="background:#41C9FF"></span><b>Celeste:</b> Radio de precisión reportado por el GPS.</div>
+</div>
+
+<footer style="margin-top:20px">
+<b>Descripción</b><br>
+<small>Este sistema compara la posición GPS original con la posición estimada mediante un Filtro de Kalman, reduciendo el ruido y mejorando la estabilidad de la ubicación para aplicaciones geodésicas y de navegación.</small>
+<div id="console" style="margin-top:10px;font-family:monospace"></div>
+</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const API="/procesar";
+const map=L.map("map").setView([0,0],2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20}).addTo(map);
+const raw=L.circleMarker([0,0],{color:"#FF3D57",fillColor:"#FF3D57",radius:7,fillOpacity:.8}).addTo(map);
+const kal=L.circleMarker([0,0],{color:"#00C853",fillColor:"#00C853",radius:8,fillOpacity:1}).addTo(map);
+const c=L.circle([0,0],{radius:1,color:"#41C9FF",fillOpacity:.15}).addTo(map);
+const line1=L.polyline([],{color:"#FF3D57",weight:2,opacity:.5}).addTo(map);
+const line2=L.polyline([],{color:"#00C853",weight:4}).addTo(map);
+let first=true;
+navigator.geolocation.watchPosition(async p=>{
+const body={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};
+raw.setLatLng([body.lat,body.lon]);line1.addLatLng([body.lat,body.lon]);
+c.setLatLng([body.lat,body.lon]);c.setRadius(body.accuracy);
+const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+const d=await r.json();
+kal.setLatLng([d.lat,d.lon]);line2.addLatLng([d.lat,d.lon]);
+if(first){map.setView([d.lat,d.lon],19);first=false;}
+lat.textContent=d.lat.toFixed(7);
+lon.textContent=d.lon.toFixed(7);
+acc.textContent="±"+body.accuracy.toFixed(1)+" m";
+estado.textContent=d.status;
+samples.textContent=d.samples;
+outliers.textContent=d.outliers;
+console.textContent="Sistema conectado correctamente.";
+},e=>console.textContent=e.message,{enableHighAccuracy:true,maximumAge:0,timeout:5000});
+</script>
+</body>
+</html>
