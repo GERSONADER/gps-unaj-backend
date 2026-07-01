@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import math
 
 app = Flask(__name__)
 CORS(app)
+@app.route("/")
+def inicio():
+    return render_template("index.html")
 
 class MotorPrecisionToloza:
     def __init__(self):
