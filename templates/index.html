@@ -238,6 +238,26 @@ small { color: #5c7d98; }
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // 1. NUEVO: Generamos un ID único y aleatorio para este celular apenas carga la página
+const miUserId = Math.random().toString(36).substring(2, 15);
+
+navigator.geolocation.watchPosition(async p => {
+    const bodyData = {
+        lat: p.coords.latitude, 
+        lon: p.coords.longitude,
+        accuracy: p.coords.accuracy,
+        user_id: miUserId  
+    };
+
+    const r = await fetch("/procesar", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyData) 
+    });
+    
+    const d = await r.json();
+}, error => console.log(error), {enableHighAccuracy: true});
+    
 const API = "/procesar";
 const map = L.map("map").setView([0,0],2);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20}).addTo(map);
