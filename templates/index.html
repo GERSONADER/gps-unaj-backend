@@ -93,7 +93,6 @@ body {
 /* TARJETAS DE DATOS */
 .cards {
     display: grid;
-    /* Grid automático: se adapta al ancho disponible */
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 15px;
 }
@@ -143,7 +142,7 @@ body {
     border-radius: 30px;
     box-shadow: 0 5px 12px rgba(0,0,0,.08);
     font-size: 0.9rem;
-    flex: 1 1 auto; /* Permite que los items se ajusten al ancho en móvil */
+    flex: 1 1 auto;
 }
 
 .dot {
@@ -162,36 +161,21 @@ footer {
 
 small { color: #5c7d98; }
 
-/* =========================================
-   ADAPTACIÓN PARA CELULARES (RESPONSIVE)
-   ========================================= */
+/* ADAPTACIÓN PARA CELULARES */
 @media screen and (max-width: 768px) {
     .header {
-        flex-direction: column; /* Apila los elementos verticalmente */
+        flex-direction: column;
         padding: 20px 15px;
         text-align: center;
     }
-    
-    /* Reducir tamaño de logos en móvil */
     .logo-unaj { width: 120px; }
     .logo-carrera { width: 90px; }
-    
-    /* Reducir tamaño de textos en móvil */
     .titulo h1 { font-size: 24px; }
     .titulo h3 { font-size: 18px; }
     .titulo p { font-size: 14px; }
-    
-    /* Reducir altura del mapa para que quepa en la pantalla del celular */
     #map { height: 400px; }
-    
-    /* Las tarjetas tomarán el 100% del ancho (1 columna) en celulares pequeños */
-    .cards {
-        grid-template-columns: 1fr; 
-    }
-    
-    .legend {
-        flex-direction: column; /* La leyenda se apila verticalmente */
-    }
+    .cards { grid-template-columns: 1fr; }
+    .legend { flex-direction: column; }
 }
 </style>
 </head>
@@ -202,13 +186,11 @@ small { color: #5c7d98; }
         <div class="logo-container">
             <img src="/static/LOGO_UNAJ.png" class="logo-unaj" alt="Logo UNAJ">
         </div>
-
         <div class="titulo">
             <h1>Sistema Inteligente de Corrección GPS</h1>
             <h3>Filtro de Kalman Adaptativo</h3>
             <p>Universidad Nacional de Juliaca</p>
         </div>
-
         <div class="logo-container">
             <img src="/static/LOGO_EPISS.png" class="logo-carrera" alt="Logo EPISS">
         </div>
@@ -238,30 +220,15 @@ small { color: #5c7d98; }
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. NUEVO: Generamos un ID único y aleatorio para este celular apenas carga la página
+// 1. Generar ID único al cargar la página
 const miUserId = Math.random().toString(36).substring(2, 15);
-
-navigator.geolocation.watchPosition(async p => {
-    const bodyData = {
-        lat: p.coords.latitude, 
-        lon: p.coords.longitude,
-        accuracy: p.coords.accuracy,
-        user_id: miUserId  
-    };
-
-    const r = await fetch("/procesar", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyData) 
-    });
-    
-    const d = await r.json();
-}, error => console.log(error), {enableHighAccuracy: true});
-    
 const API = "/procesar";
+
+// 2. Configurar Mapa
 const map = L.map("map").setView([0,0],2);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20}).addTo(map);
 
+// 3. Crear elementos visuales (marcadores y líneas)
 const raw = L.circleMarker([0,0],{color:"#FF3D57",fillColor:"#FF3D57",radius:7,fillOpacity:.8}).addTo(map);
 const kal = L.circleMarker([0,0],{color:"#00C853",fillColor:"#00C853",radius:8,fillOpacity:1}).addTo(map);
 const c = L.circle([0,0],{radius:1,color:"#41C9FF",fillOpacity:.15}).addTo(map);
@@ -270,14 +237,24 @@ const line1 = L.polyline([],{color:"#FF3D57",weight:2,opacity:.5}).addTo(map);
 const line2 = L.polyline([],{color:"#00C853",weight:4}).addTo(map);
 let first = true;
 
+// 4. UN SOLO BLOQUE DE LECTURA GPS
 navigator.geolocation.watchPosition(async p => {
-    const body = {lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy};
+    // Empaquetamos todo junto, incluyendo el ID
+    const body = {
+        lat: p.coords.latitude, 
+        lon: p.coords.longitude, 
+        accuracy: p.coords.accuracy,
+        user_id: miUserId // <-- Aquí está la magia multi-usuario
+    };
+
+    // Actualizamos la posición roja en el mapa
     raw.setLatLng([body.lat, body.lon]);
     line1.addLatLng([body.lat, body.lon]);
     c.setLatLng([body.lat, body.lon]);
     c.setRadius(body.accuracy);
 
     try {
+        // Hacemos un solo Fetch enviando el JSON armado
         const r = await fetch(API, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -285,6 +262,7 @@ navigator.geolocation.watchPosition(async p => {
         });
         const d = await r.json();
 
+        // Actualizamos la posición verde (Kalman)
         kal.setLatLng([d.lat, d.lon]);
         line2.addLatLng([d.lat, d.lon]);
 
@@ -293,6 +271,7 @@ navigator.geolocation.watchPosition(async p => {
             first = false;
         }
 
+        // Actualizamos las tarjetas de la pantalla
         document.getElementById("lat").textContent = d.lat.toFixed(7);
         document.getElementById("lon").textContent = d.lon.toFixed(7);
         document.getElementById("acc").textContent = "±" + body.accuracy.toFixed(1) + " m";
